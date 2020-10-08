@@ -1,0 +1,156 @@
+1 1
+282 361 101 
+0 0 0
+200000 0.001 7 -2.0 -7.5
+1 2 3
+40 1 1
+202500.0 1.0 10000 5
+1.0 0.1
+4 0.25 0.33333333333333 0.5 1.0
+0.065 0.065 0.065 0.065
+2 0.65 1.0E-08 1.0E-06
+0.5 0.05
+1.0 2.5 2.5
+0.1 0.2 0.2
+10
+0.1
+1
+50 50 50 1
+4 8 1 1 1 2
+1 1 2 2 3 3
+1 1 1 1
+0.450
+0.450
+.true.
+.true.
+1
+59 63 181 181 65 65 0.1350
+0.015 4.7
+3 30
+0
+0
+0
+0
+0
+
+
+  ! input data
+  open (1, file = 'ind3dmgmb.dat')
+
+  read (1,*) ns, icycle
+  read (1,*) (img(ns,nz), jmg(ns,nz), kmg(ns,nz), nz = 1, nzone)
+  read (1,*) (icrs(nz), jcrs(nz), kcrs(nz), nz = 1, nzone)
+
+  !read (1,*) nt2, delti, e_source, it_min, er_min, eo_min
+  read (1,*) nt2, delti, it_min, er_min, eo_min
+  read (1,*) (iter(n), n = 1, nl)
+  read (1,*) (itm(n), n = 1, nl)
+  read (1,*) ren, cfl1, vnn1, beta, icn, icnw
+  read (1,*) irk, (alfa(i), i = 1, irk)
+  read (1,*) (eps(i), i = 1, 4)
+  read (1.*) itk, cfl2, vnn2, cdes
+
+  read (1,*) (((ep(j,k,nz), k = 1, 3), j = 1, 2), nz = 1, nzone)
+
+  read (1,*) partc_skip
+  read (1,*) pdiss_coef
+
+  read (1,*) monitor_num_points
+  read (1,*) ((monitor_point_ijk(j,k),k=1,3),j=1,monitor_num_points)
+
+  read (1,*) ((nbtype(n,nz), n = 1, 6), nz = 1, nzone)
+  read (1,*) (( nbdir(n,nz), n = 1, 6), nz = 1, nzone)
+
+  read (1,*) ifix, jfix, kfix, nzfix
+  read (1,*) mbim_int, coefv 
+
+  do nz = 1, nzone
+     read (1,*) nzblanking(nz)
+     if (nzblanking(nz) /= 0) &
+     do nzb = nzblanking(nz)
+        bbg = 1 + 2*(nzb-1)
+        bnd = 2 + 2*(nzb-1)
+        read (1,*) (blktype(n,nzb,nz),n=1,6)
+        read (1,*) (blanking(idir,bbg,ns,nz),blanking(idir,bnd,ns,nz),idir=1,3) 
+     end do
+  end do
+
+  close (1)
+
+
+Note :  definition of icrs, jcrs, kcrs changed !
+	Now, it is just the opposite of the
+	previous definition
+
+	icrs = 0 semi-coarsening in csi direction
+	icrs = 1 full-coarsening in csi direction
+        etc., for jcrs, kcrs
+
+
+  ns            : the grid level on which multigrid starts
+  nstop         : the grid level on which multigrid stops
+  ng            : Levels of multigrid
+  img(n)
+  jmj(n)
+  kmg(n)        : i, j, k max. dimensions of the nth-level grid
+  lmxg(n)       : = 0 for n=1
+                  = img(n-1)*jmg(n-1)*kmg(n-1) for n>1
+  ln(i,j,k,n)   : locates the (i,j,k) point of the nth-grid level
+                 in the one dimensional vector
+  ls(n),le(n)   : starting and ending indices for the n-grid level
+  icg(n),ieg(n)
+        ,izg(n) : differentiation steps in the i, j, k th directions
+                  for the nth-level grid
+  csi,eta,zet,aj: metrics and Jacobian of the geometric transormation
+                  for all the ng grids
+  q, qn, rh     : flow vectors and RHS vector for all grids sequentially
+  beta          : artificial compressibility coefficient
+  icn           : every icn to write out convergence history
+  icnw          : every icnw to call woutput
+  irk           : coefficients for Runge-kutta scheme
+  istart        : =0 new calculation
+                : =1 recalculate
+  eps(i)        : scalling factors for artificial dissipation
+  cvin          : des, working eddy viscosity in freestream
+  itk           : number of iteration for turbulence closure equation
+  cfl2,vnn2     : for turbulence equations
+  ep(j,k)       : smoothing factors. J=1, for explicit or implicit iterations
+                                     J=2, for prolongations
+  itm(ng)       : the iteration numbers for the V-cycle starting from ns
+  pdiss_coef    : artificial dissipation coefficient for pressur
+  ifix, jfix
+        kfix    : basic point for pressure redistribution
+
+  nzone         : zone number
+  itmax         : iteration number of every real time step
+  it_int        : decide how the interface subroutine is called
+  dimf          : =0, interface communication based on flux conservation
+                  =1, direct interface interpolation
+
+  nzblanking    : =0, no blanking with the block
+                  =1, blanking
+  blanking(i,1,n,nz)
+		: the nz block, n multi-level, i direction blanking start
+  blanking(i,2,n,nz): blanking ending
+
+  n_int(nz)     : the total interface grid node number of nz-th block
+  nodes(1:3,i,nz)
+		: the n-gh interface grid node's i,j,k
+  hosts(1:4,i,j,nz)
+		: j: layer number(if there were more than 1 block overlap)
+                  1:3, the host i,j,k
+                  4, the host block number
+  coef(:,i,j,nz): interpolation coefficient along three direction 1,2,3
+
+  nbtype	: =0, interface
+		  =1, solid wall
+		  =2, symmetric boundary
+		  =3, freestream
+		  =4, inflow
+		  =5, exit (method of characteristics)
+		  =6, periodic condition
+
+  nbdir		: =1, x direction
+		  =2, y direction
+		  =3, z direction
+
